@@ -104,7 +104,7 @@ async def handle_kbm(msg: types.Message):
     try:
         kbm = float(msg.text.replace(",", "."))
         user_data[msg.from_user.id]["kbm"] = kbm
-        base = 5000
+        base = 8000
         result = base * kbm
         await msg.answer(f"Примерная стоимость ОСАГО: {int(result)} ₽", reply_markup=main_kb)
     except ValueError:
