@@ -4,6 +4,7 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemo
 from aiogram.utils import executor
 import logging
 import os
+import re
 
 # Включаем логирование
 logging.basicConfig(level=logging.INFO)
@@ -13,7 +14,7 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(bot)
 
-# Указать свой Telegram ID (admin)
+# Telegram ID администратора
 ADMIN_ID = 1195423197
 
 # Хранилище данных пользователя
@@ -43,16 +44,10 @@ async def handle_phone(msg: types.Message):
     phone = msg.text.strip()
     if re.fullmatch(r"\+7\d{10}", phone):
         user_data[msg.from_user.id]["phone"] = phone
-        user_data[msg.from_user.id]["step"] = "next_step"  
-        await msg.answer("Номер принят. ✅")
+        user_data[msg.from_user.id]["step"] = "gosnomer"
+        await msg.answer("Введите госномер автомобиля:")
     else:
         await msg.answer("❌ Неверный формат. Введите номер в формате +7XXXXXXXXXX.")
-
-@dp.message_handler(lambda m: user_data.get(m.from_user.id, {}).get("step") == "phone")
-async def handle_phone(msg: types.Message):
-    user_data[msg.from_user.id]["phone"] = msg.text
-    user_data[msg.from_user.id]["step"] = "gosnomer"
-    await msg.answer("Введите госномер автомобиля:")
 
 @dp.message_handler(lambda m: user_data.get(m.from_user.id, {}).get("step") == "gosnomer")
 async def handle_gosnomer(msg: types.Message):
@@ -75,29 +70,19 @@ async def handle_brand(msg: types.Message):
 @dp.message_handler(lambda m: user_data.get(m.from_user.id, {}).get("step") == "year")
 async def handle_year(msg: types.Message):
     user_data[msg.from_user.id]["year"] = msg.text
-
     data = user_data[msg.from_user.id]
     summary = (
-        "📋 Новая заявка на ОСАГО:
-"
-        f"👤 ФИО: {data.get('name')}
-"
-        f"📞 Телефон: {data.get('phone')}
-"
-        f"🚗 Госномер: {data.get('gosnomer')}
-"
-        f"🔎 VIN: {data.get('vin')}
-"
-        f"🚘 Марка: {data.get('brand')}
-"
+        "📋 Новая заявка на ОСАГО:\n"
+        f"👤 ФИО: {data.get('name')}\n"
+        f"📞 Телефон: {data.get('phone')}\n"
+        f"🚗 Госномер: {data.get('gosnomer')}\n"
+        f"🔎 VIN: {data.get('vin')}\n"
+        f"🚘 Марка: {data.get('brand')}\n"
         f"📆 Год выпуска: {data.get('year')}"
     )
-
     await msg.answer("Спасибо, уважаемый Клиент! Анкета заполнена! Свяжемся с вами в течении 1 часа.", reply_markup=main_kb)
-
     try:
         await bot.send_message(ADMIN_ID, summary)
-        logging.info(f"Заявка отправлена админу: {summary}")
     except Exception as e:
         logging.error(f"Ошибка при отправке админу: {e}")
 
@@ -136,7 +121,6 @@ async def handle_age(msg: types.Message):
 async def handle_kbm(msg: types.Message):
     try:
         kbm = float(msg.text.replace(",", "."))
-        user_data[msg.from_user.id]["kbm"] = kbm
         base = 8000
         result = base * kbm
         await msg.answer(f"Примерная стоимость ОСАГО. Для полного уточнения мы с вами свяжемся!: {int(result)} ₽", reply_markup=main_kb)
