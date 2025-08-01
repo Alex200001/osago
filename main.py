@@ -6,7 +6,6 @@ import logging
 import os
 import re
 
-# Включаем логирование
 logging.basicConfig(level=logging.INFO)
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -39,15 +38,19 @@ async def handle_phone(msg: types.Message):
     if re.fullmatch(r"\+7\d{10}", phone):
         user_data[msg.from_user.id]["phone"] = phone
         user_data[msg.from_user.id]["step"] = "gosnomer"
-        await msg.answer("Введите госномер автомобиля:")
+        await msg.answer("Введите госномер автомобиля (пример: А123ВС77 или A123BC799):")
     else:
         await msg.answer("❌ Неверный формат. Введите номер в формате +7XXXXXXXXXX.")
 
 @dp.message_handler(lambda m: user_data.get(m.from_user.id, {}).get("step") == "gosnomer")
 async def handle_gosnomer(msg: types.Message):
-    user_data[msg.from_user.id]["gosnomer"] = msg.text
-    user_data[msg.from_user.id]["step"] = "vin"
-    await msg.answer("Введите VIN номер. Он указан в Свидетельстве о регистрации ТС. (:")
+    gosnomer = msg.text.strip().upper()
+    if re.fullmatch(r"^[А-ЯA-Z]{1}\d{3}[А-ЯA-Z]{2}\d{2,3}$", gosnomer):
+        user_data[msg.from_user.id]["gosnomer"] = gosnomer
+        user_data[msg.from_user.id]["step"] = "vin"
+        await msg.answer("Введите VIN номер. Он указан в Свидетельстве о регистрации ТС. (:")
+    else:
+        await msg.answer("❌ Формат госномера неверный. Пример: А123ВС77 или A123BC799")
 
 @dp.message_handler(lambda m: user_data.get(m.from_user.id, {}).get("step") == "vin")
 async def handle_vin(msg: types.Message):
@@ -77,8 +80,6 @@ async def handle_year(msg: types.Message):
     )
 
     await msg.answer("Спасибо, уважаемый Клиент! Анкета заполнена! Свяжемся с вами в течении 1 часа.", reply_markup=main_kb)
-
-    # ✅ Сброс шага, чтобы другие функции работали корректно
     user_data[msg.from_user.id]["step"] = None
 
     try:
