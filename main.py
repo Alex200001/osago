@@ -3,6 +3,8 @@ import os
 import re
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
+from aiogram.filters import Command
+from aiogram import Router
 from aiohttp import web
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -11,29 +13,32 @@ WEBHOOK_PATH = "/webhook"
 WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
 
 bot = Bot(token=BOT_TOKEN)
-dp = Dispatcher(bot=bot)
+dp = Dispatcher()
+router = Router()
+dp.include_router(router)
+
 user_data = {}
 ADMIN_ID = 1195423197
 
 main_kb = ReplyKeyboardMarkup(resize_keyboard=True)
 main_kb.add(KeyboardButton("Оформить ОСАГО"), KeyboardButton("Рассчитать стоимость"))
 
-@dp.message(commands=["start"])
+@router.message(Command("start"))
 async def start(msg: Message):
     await msg.answer("Здравствуйте, дорогой Клиент! Рады приветствовать вас в нашем Telegram-боте. Пожалуйста, выберите действие:", reply_markup=main_kb)
 
-@dp.message(lambda m: m.text == "Оформить ОСАГО")
+@router.message(lambda m: m.text == "Оформить ОСАГО")
 async def start_survey(msg: Message):
     user_data[msg.from_user.id] = {"step": "name"}
     await msg.answer("Введите ваше ФИО:")
 
-@dp.message(lambda m: user_data.get(m.from_user.id, {}).get("step") == "name")
+@router.message(lambda m: user_data.get(m.from_user.id, {}).get("step") == "name")
 async def handle_name(msg: Message):
     user_data[msg.from_user.id]["name"] = msg.text
     user_data[msg.from_user.id]["step"] = "phone"
     await msg.answer("Введите номер телефона в формате +7XXXXXXXXXX:")
 
-@dp.message(lambda m: user_data.get(m.from_user.id, {}).get("step") == "phone")
+@router.message(lambda m: user_data.get(m.from_user.id, {}).get("step") == "phone")
 async def handle_phone(msg: Message):
     phone = msg.text.strip()
     if re.fullmatch(r"\+7\d{10}", phone):
@@ -43,7 +48,7 @@ async def handle_phone(msg: Message):
     else:
         await msg.answer("❌ Неверный формат. Введите номер в формате +7XXXXXXXXXX.")
 
-@dp.message(lambda m: user_data.get(m.from_user.id, {}).get("step") == "gosnomer")
+@router.message(lambda m: user_data.get(m.from_user.id, {}).get("step") == "gosnomer")
 async def handle_gosnomer(msg: Message):
     gosnomer = msg.text.strip().upper()
     if re.fullmatch(r"^[А-ЯA-Z]{1}\d{3}[А-ЯA-Z]{2}\d{2,3}$", gosnomer):
@@ -53,19 +58,19 @@ async def handle_gosnomer(msg: Message):
     else:
         await msg.answer("❌ Формат госномера неверный. Пример: А123ВС77 или A123BC799")
 
-@dp.message(lambda m: user_data.get(m.from_user.id, {}).get("step") == "vin")
+@router.message(lambda m: user_data.get(m.from_user.id, {}).get("step") == "vin")
 async def handle_vin(msg: Message):
     user_data[msg.from_user.id]["vin"] = msg.text
     user_data[msg.from_user.id]["step"] = "brand"
     await msg.answer("Марка и модель автомобиля:")
 
-@dp.message(lambda m: user_data.get(m.from_user.id, {}).get("step") == "brand")
+@router.message(lambda m: user_data.get(m.from_user.id, {}).get("step") == "brand")
 async def handle_brand(msg: Message):
     user_data[msg.from_user.id]["brand"] = msg.text
     user_data[msg.from_user.id]["step"] = "year"
     await msg.answer("Год выпуска автомобиля:")
 
-@dp.message(lambda m: user_data.get(m.from_user.id, {}).get("step") == "year")
+@router.message(lambda m: user_data.get(m.from_user.id, {}).get("step") == "year")
 async def handle_year(msg: Message):
     user_data[msg.from_user.id]["year"] = msg.text
     data = user_data[msg.from_user.id]
@@ -85,18 +90,18 @@ async def handle_year(msg: Message):
     except Exception as e:
         print(f"Ошибка при отправке админу: {e}")
 
-@dp.message(lambda m: m.text == "Рассчитать стоимость")
+@router.message(lambda m: m.text == "Рассчитать стоимость")
 async def ask_region(msg: Message):
     user_data[msg.from_user.id] = {"step": "calc_region"}
     await msg.answer("Введите ваш регион (например: Волгоград):")
 
-@dp.message(lambda m: user_data.get(m.from_user.id, {}).get("step") == "calc_region")
+@router.message(lambda m: user_data.get(m.from_user.id, {}).get("step") == "calc_region")
 async def handle_region(msg: Message):
     user_data[msg.from_user.id]["region"] = msg.text
     user_data[msg.from_user.id]["step"] = "calc_power"
     await msg.answer("Введите мощность автомобиля в л.с.:")
 
-@dp.message(lambda m: user_data.get(m.from_user.id, {}).get("step") == "calc_power")
+@router.message(lambda m: user_data.get(m.from_user.id, {}).get("step") == "calc_power")
 async def handle_power(msg: Message):
     try:
         power = int(msg.text)
@@ -106,7 +111,7 @@ async def handle_power(msg: Message):
     except ValueError:
         await msg.answer("Пожалуйста, введите число (мощность в л.с.)")
 
-@dp.message(lambda m: user_data.get(m.from_user.id, {}).get("step") == "calc_age")
+@router.message(lambda m: user_data.get(m.from_user.id, {}).get("step") == "calc_age")
 async def handle_age(msg: Message):
     try:
         age = int(msg.text)
@@ -116,7 +121,7 @@ async def handle_age(msg: Message):
     except ValueError:
         await msg.answer("Пожалуйста, введите возраст числом.")
 
-@dp.message(lambda m: user_data.get(m.from_user.id, {}).get("step") == "calc_kbm")
+@router.message(lambda m: user_data.get(m.from_user.id, {}).get("step") == "calc_kbm")
 async def handle_kbm(msg: Message):
     try:
         kbm = float(msg.text.replace(",", "."))
