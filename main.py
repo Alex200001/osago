@@ -9,18 +9,12 @@ import re
 # Включаем логирование
 logging.basicConfig(level=logging.INFO)
 
-# Токен бота из переменной окружения
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(bot)
-
-# Telegram ID администратора
 ADMIN_ID = 1195423197
-
-# Хранилище данных пользователя
 user_data = {}
 
-# Клавиатура
 main_kb = ReplyKeyboardMarkup(resize_keyboard=True)
 main_kb.add(KeyboardButton("Оформить ОСАГО"), KeyboardButton("Рассчитать стоимость"))
 
@@ -71,6 +65,7 @@ async def handle_brand(msg: types.Message):
 async def handle_year(msg: types.Message):
     user_data[msg.from_user.id]["year"] = msg.text
     data = user_data[msg.from_user.id]
+
     summary = (
         "📋 Новая заявка на ОСАГО:\n"
         f"👤 ФИО: {data.get('name')}\n"
@@ -80,7 +75,12 @@ async def handle_year(msg: types.Message):
         f"🚘 Марка: {data.get('brand')}\n"
         f"📆 Год выпуска: {data.get('year')}"
     )
+
     await msg.answer("Спасибо, уважаемый Клиент! Анкета заполнена! Свяжемся с вами в течении 1 часа.", reply_markup=main_kb)
+
+    # ✅ Сброс шага, чтобы другие функции работали корректно
+    user_data[msg.from_user.id]["step"] = None
+
     try:
         await bot.send_message(ADMIN_ID, summary)
     except Exception as e:
