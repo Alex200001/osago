@@ -13,6 +13,9 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(bot)
 
+# Указать свой Telegram ID (admin)
+ADMIN_ID = 1195423197
+
 # Хранилище данных пользователя
 user_data = {}
 
@@ -20,12 +23,10 @@ user_data = {}
 main_kb = ReplyKeyboardMarkup(resize_keyboard=True)
 main_kb.add(KeyboardButton("Оформить ОСАГО"), KeyboardButton("Рассчитать стоимость"))
 
-# Команда /start
 @dp.message_handler(commands=["start"])
 async def start(msg: types.Message):
     await msg.answer("Здравствуйте! Выберите действие:", reply_markup=main_kb)
 
-# Старт анкеты
 @dp.message_handler(lambda m: m.text == "Оформить ОСАГО")
 async def start_survey(msg: types.Message):
     user_data[msg.from_user.id] = {"step": "name"}
@@ -64,10 +65,32 @@ async def handle_brand(msg: types.Message):
 @dp.message_handler(lambda m: user_data.get(m.from_user.id, {}).get("step") == "year")
 async def handle_year(msg: types.Message):
     user_data[msg.from_user.id]["year"] = msg.text
-    user_data[msg.from_user.id]["step"] = "confirm"
+
+    data = user_data[msg.from_user.id]
+    summary = (
+        "📋 Новая заявка на ОСАГО:
+"
+        f"👤 ФИО: {data.get('name')}
+"
+        f"📞 Телефон: {data.get('phone')}
+"
+        f"🚗 Госномер: {data.get('gosnomer')}
+"
+        f"🔎 VIN: {data.get('vin')}
+"
+        f"🚘 Марка: {data.get('brand')}
+"
+        f"📆 Год выпуска: {data.get('year')}"
+    )
+
     await msg.answer("Спасибо! Анкета заполнена. Мы скоро свяжемся с вами.", reply_markup=main_kb)
 
-# Расчёт стоимости
+    try:
+        await bot.send_message(ADMIN_ID, summary)
+        logging.info(f"Заявка отправлена админу: {summary}")
+    except Exception as e:
+        logging.error(f"Ошибка при отправке админу: {e}")
+
 @dp.message_handler(lambda m: m.text == "Рассчитать стоимость")
 async def ask_region(msg: types.Message):
     user_data[msg.from_user.id] = {"step": "calc_region"}
