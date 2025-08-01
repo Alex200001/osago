@@ -25,7 +25,7 @@ main_kb.add(KeyboardButton("Оформить ОСАГО"), KeyboardButton("Ра�
 
 @dp.message_handler(commands=["start"])
 async def start(msg: types.Message):
-    await msg.answer("Здравствуйте! Выберите действие:", reply_markup=main_kb)
+    await msg.answer("Здравствуйте, дорогой Клиент! Рады приветствовать вас в нашем Telegram-боте. Пожалуйста, выберите действие:", reply_markup=main_kb)
 
 @dp.message_handler(lambda m: m.text == "Оформить ОСАГО")
 async def start_survey(msg: types.Message):
@@ -36,7 +36,17 @@ async def start_survey(msg: types.Message):
 async def handle_name(msg: types.Message):
     user_data[msg.from_user.id]["name"] = msg.text
     user_data[msg.from_user.id]["step"] = "phone"
-    await msg.answer("Введите номер телефона:")
+    await msg.answer("Введите номер телефона в формате +7XXXXXXXXXX:")
+
+@dp.message_handler(lambda m: user_data.get(m.from_user.id, {}).get("step") == "phone")
+async def handle_phone(msg: types.Message):
+    phone = msg.text.strip()
+    if re.fullmatch(r"\+7\d{10}", phone):
+        user_data[msg.from_user.id]["phone"] = phone
+        user_data[msg.from_user.id]["step"] = "next_step"  
+        await msg.answer("Номер принят. ✅")
+    else:
+        await msg.answer("❌ Неверный формат. Введите номер в формате +7XXXXXXXXXX.")
 
 @dp.message_handler(lambda m: user_data.get(m.from_user.id, {}).get("step") == "phone")
 async def handle_phone(msg: types.Message):
@@ -48,7 +58,7 @@ async def handle_phone(msg: types.Message):
 async def handle_gosnomer(msg: types.Message):
     user_data[msg.from_user.id]["gosnomer"] = msg.text
     user_data[msg.from_user.id]["step"] = "vin"
-    await msg.answer("Введите VIN номер:")
+    await msg.answer("Введите VIN номер. Он указан в Свидетельстве о регистрации ТС. (:")
 
 @dp.message_handler(lambda m: user_data.get(m.from_user.id, {}).get("step") == "vin")
 async def handle_vin(msg: types.Message):
@@ -83,7 +93,7 @@ async def handle_year(msg: types.Message):
         f"📆 Год выпуска: {data.get('year')}"
     )
 
-    await msg.answer("Спасибо! Анкета заполнена. Мы скоро свяжемся с вами.", reply_markup=main_kb)
+    await msg.answer("Спасибо, уважаемый Клиент! Анкета заполнена! Свяжемся с вами в течении 1 часа.", reply_markup=main_kb)
 
     try:
         await bot.send_message(ADMIN_ID, summary)
@@ -94,7 +104,7 @@ async def handle_year(msg: types.Message):
 @dp.message_handler(lambda m: m.text == "Рассчитать стоимость")
 async def ask_region(msg: types.Message):
     user_data[msg.from_user.id] = {"step": "calc_region"}
-    await msg.answer("Введите ваш регион (например: Москва):")
+    await msg.answer("Введите ваш регион (например: Волгоград):")
 
 @dp.message_handler(lambda m: user_data.get(m.from_user.id, {}).get("step") == "calc_region")
 async def handle_region(msg: types.Message):
@@ -118,7 +128,7 @@ async def handle_age(msg: types.Message):
         age = int(msg.text)
         user_data[msg.from_user.id]["age"] = age
         user_data[msg.from_user.id]["step"] = "calc_kbm"
-        await msg.answer("Введите КБМ (например, 0.85 — если без аварий):")
+        await msg.answer("Введите КБМ (например, 1,17 — если вы только получили права):")
     except ValueError:
         await msg.answer("Пожалуйста, введите возраст числом.")
 
@@ -129,7 +139,7 @@ async def handle_kbm(msg: types.Message):
         user_data[msg.from_user.id]["kbm"] = kbm
         base = 8000
         result = base * kbm
-        await msg.answer(f"Примерная стоимость ОСАГО: {int(result)} ₽", reply_markup=main_kb)
+        await msg.answer(f"Примерная стоимость ОСАГО. Для полного уточнения мы с вами свяжемся!: {int(result)} ₽", reply_markup=main_kb)
     except ValueError:
         await msg.answer("Введите корректное значение КБМ.")
 
